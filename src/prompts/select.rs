@@ -40,6 +40,7 @@ pub struct Select<'a> {
     clear: bool,
     theme: &'a dyn Theme,
     paged: bool,
+    max_length: Option<usize>,
 }
 
 impl<'a> Default for Select<'a> {
@@ -80,6 +81,7 @@ impl<'a> Select<'a> {
             clear: true,
             theme,
             paged: false,
+            max_length: None,
         }
     }
 
@@ -91,7 +93,15 @@ impl<'a> Select<'a> {
         self
     }
 
-    /// Indicates whether select menu should be ereased from the screen after interaction.
+    /// Sets an optional max length for a page
+    ///
+    /// Max length is disabled by None
+    pub fn max_length(&mut self, val: usize) -> &mut Select<'a> {
+        self.max_length = Some(val);
+        self
+    }
+
+    /// Indicates whether select menu should be erased from the screen after interaction.
     ///
     /// The default is to clear the menu.
     pub fn clear(&mut self, val: bool) -> &mut Select<'a> {
@@ -253,10 +263,10 @@ impl<'a> Select<'a> {
             ));
         }
 
-        let capacity = if self.paged {
-            term.size().0 as usize - 1
-        } else {
-            self.items.len()
+        let capacity = match (self.paged, self.max_length) {
+            (true, None) => term.size().0 as usize - 1,
+            (true, Some(length)) => length,
+            (false, _) => self.items.len(),
         };
 
         let pages = (self.items.len() as f64 / capacity as f64).ceil() as usize;
@@ -266,6 +276,10 @@ impl<'a> Select<'a> {
 
         if let Some(ref prompt) = self.prompt {
             render.select_prompt(prompt)?;
+        }
+
+        if self.paged && self.max_length.is_some() {
+            render.display_page_number(page, pages)?;
         }
 
         let mut size_vec = Vec::new();
@@ -366,6 +380,10 @@ impl<'a> Select<'a> {
             }
 
             render.clear_preserve_prompt(&size_vec)?;
+
+            if self.paged && self.max_length.is_some() {
+                render.display_page_number(page, pages)?;
+            }
         }
     }
 }

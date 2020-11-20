@@ -194,6 +194,16 @@ pub trait Theme {
             text
         )
     }
+
+    /// Formats the current page and max page.
+    fn format_current_page(
+        &self,
+        f: &mut dyn fmt::Write,
+        current: usize,
+        max: usize,
+    ) -> fmt::Result {
+        write!(f, "Page {}/{}", current + 1, max)
+    }
 }
 
 /// The default theme.
@@ -529,7 +539,7 @@ impl Theme for ColorfulTheme {
     }
 }
 
-/// Helper struct to conveniently render a theme ot a term.
+/// Helper struct to conveniently render a theme to a term.
 pub(crate) struct TermThemeRenderer<'a> {
     term: &'a Term,
     theme: &'a dyn Theme,
@@ -599,6 +609,9 @@ impl<'a> TermThemeRenderer<'a> {
         Ok(())
     }
 
+    pub fn display_page_number(&mut self, current: usize, total: usize) -> io::Result<()> {
+        self.write_formatted_line(|this, buf| this.theme.format_current_page(buf, current, total))
+    }
     pub fn error(&mut self, err: &str) -> io::Result<()> {
         self.write_formatted_line(|this, buf| this.theme.format_error(buf, err))
     }
